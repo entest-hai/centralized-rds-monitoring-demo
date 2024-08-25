@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation Sample Template for creating a Multi-AZ DB cluster.
+Parameters:
+  NetworkStackName:
+    Description: Stack name of the network stack
+    Type: String
+    Default: network-stack
+  DBUsername:
+    NoEcho: 'true'
+    Description: Username for database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: Password for database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: Must contain only alphanumeric characters.
+  DBClusterIdentifier:
+    Type: String
+    Default: 'database-cluster'
+    Description: The DB cluster identifier
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z0-9-]*'
+    ConstraintDescription: Must contain only alphanumeric characters and hyphens.
+  DBInstanceClass:
+    Default: db.m5d.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+    AllowedValues:
+      - db.m5d.large
+      - db.r6gd.large
+
+  Engine:
+    Type: String
+    Default: mysql
+    AllowedValues:
+      - mysql
+  EngineVersion:
+    Type: String
+    Default: "8.0.35"
+    AllowedValues:
+      - "8.0.35"
+      - "8.0.34"
+  AllocatedStorage:
+    Type: Number
+    Default: 100
+Resources:
+  #------------------------------------------------------
+  # iam role for rds push logs to cloudwatch:
+  #------------------------------------------------------
+  MonitoringRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole 
+  #------------------------------------------------------
+  # database subnet group:
+  #------------------------------------------------------
+  DatabaseSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet group for database instance
+      SubnetIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-2
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-3   
+  #------------------------------------------------------
+  # rds multi-az cluster:
+  #------------------------------------------------------
+  MultiAZDBCluster:
+    Type: 'AWS::RDS::DBCluster'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F26
+            reason: disable encryption for demo purpose
+          - id: F27
+            reason: disable encryption for demo purpose
+          - id: F80
+            reason: disable delete protection for demo purpose 
+          - id: F22
+            reason: enable public access for demo purpose 
+    Properties:
+      AllocatedStorage: !Ref AllocatedStorage
+      AutoMinorVersionUpgrade: false
+      BackupRetentionPeriod: 1
+      DBClusterInstanceClass: !Ref DBInstanceClass
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DBClusterIdentifier: !Ref DBClusterIdentifier
+      DeletionProtection: false
+      Engine: !Ref Engine
+      EngineVersion: !Ref EngineVersion
+      EnableCloudwatchLogsExports:
+        - audit
+        - error
+        - general
+        - slowquery
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt [MonitoringRole, Arn]
+      Port: 3306
+      PubliclyAccessible: true
+      PerformanceInsightsEnabled: true
+      PerformanceInsightsRetentionPeriod: 7
+      StorageType: gp3
+      StorageEncrypted: false
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-database-security-group

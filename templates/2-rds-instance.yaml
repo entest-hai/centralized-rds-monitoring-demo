@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Description": "AWS CloudFormation Sample Template for creating an Amazon RDS DB instance: 
+  Sample template showing how to create a DB instance with Enhanced Monitoring enabled. 
+  **WARNING** This template creates an RDS DB instance. You will be billed for the AWS 
+  resources used if you create a stack from this template.
+Parameters:
+  NetworkStackName:
+    Description: Stack name of the network stack
+    Type: String
+    Default: network-stack
+  DBEngine:
+    Default: "8.0.35"
+    Description: MySQL
+    Type: String
+    AllowedValues:
+      - "8.0.33"
+      - "8.0.34"
+      - "8.0.35"
+  DBInstanceID:
+    Default: demo
+    Description: My database instance
+    Type: String
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: >-
+      Must begin with a letter and must not end with a hyphen or contain two
+      consecutive hyphens.
+  DBName:
+    Default: demo
+    Description: My database
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+  DBInstanceClass:
+    Default: db.m5.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+  DBAllocatedStorage:
+    Default: '50'
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '20'
+    MaxValue: '65536'
+    ConstraintDescription: must be between 20 and 65536 GiB.
+  DBUsername:
+    NoEcho: 'true'
+    Description: Username for MySQL database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+  DBPassword:
+    NoEcho: 'true'
+    Description: Password MySQL database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: must contain only alphanumeric characters.
+
+Resources:
+  #------------------------------------------------------
+  # database subnet group:
+  #------------------------------------------------------
+  DatabaseSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet group for database instance
+      SubnetIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-2
+  #------------------------------------------------------
+  # iam role for rds push logs to cloudwatch:
+  #------------------------------------------------------
+  MonitoringRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole 
+      
+  #------------------------------------------------------
+  # database rds instance:
+  #------------------------------------------------------
+  RDSDatabaseInstance:
+    Type: 'AWS::RDS::DBInstance'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F27
+            reason: disable encryption for demo purpose
+          - id: F80
+            reason: disable delete protection for demo purpose 
+          - id: F22
+            reason: enable public access for demo purpose 
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceID
+      DBName: !Ref DBName
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      Engine: MySQL
+      EngineVersion: !Ref DBEngine
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: 7
+      MultiAZ: false
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      PubliclyAccessible: true
+      EnableCloudwatchLogsExports:
+        - audit
+        - error
+        - general
+        - slowquery
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt [MonitoringRole, Arn]
+      BackupRetentionPeriod: 1
+      AutoMinorVersionUpgrade: false
+      DeletionProtection: false
+      StorageType: "gp3"
+      StorageEncrypted: false
+      # EngineLifecycleSupport: "open-source-rds-extended-support"
+      VPCSecurityGroups:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-database-security-group
