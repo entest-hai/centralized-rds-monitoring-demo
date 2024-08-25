@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation Sample Template for creating a Multi-AZ DB cluster.
+Parameters:
+  NetworkStackName:
+    Description: Stack name of the network stack
+    Type: String
+    Default: network-stack
+  DBName:
+    Default: demo
+    Description: My database
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+  MasterUsername:
+    NoEcho: 'true'
+    Description: Username for database access
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+  MasterUserPassword:
+    NoEcho: 'true'
+    Description: Password for database access
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: Must contain only alphanumeric characters.
+  DBClusterIdentifier:
+    Type: String
+    Default: 'aurora-cluster'
+    Description: The DB cluster identifier
+    MinLength: '1'
+    MaxLength: '63'
+    AllowedPattern: '[a-zA-Z0-9-]*'
+    ConstraintDescription: Must contain only alphanumeric characters and hyphens.
+  DBClusterInstanceClass:
+    Default: db.r5.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+    AllowedValues:
+      - db.r5.large 
+  DBInstanceClass:
+    Default: db.r5.large
+    Description: DB instance class
+    Type: String
+    ConstraintDescription: Must select a valid DB instance type.
+    AllowedValues:
+      - db.r5.large
+  Engine: 
+    Default: "aurora-mysql"
+    Type: String 
+    AllowedValues:
+      - aurora-mysql
+      - aurora-postgresql
+  EngineVersion:
+    Default: "8.0.mysql_aurora.3.05.2"
+    Type: String
+    Description: Aurora MySQL engine version
+    AllowedValues:
+      - "5.7.mysql_aurora.2.12.2"
+      - "5.7.mysql_aurora.2.12.3"
+      - "8.0.mysql_aurora.3.05.2"
+      - "8.0.mysql_aurora.3.06.0"
+      - "8.0.mysql_aurora.3.06.1"
+
+Resources:
+  #------------------------------------------------------
+  # iam role for rds push logs to cloudwatch:
+  #------------------------------------------------------
+  MonitoringRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole 
+  #------------------------------------------------------
+  # database subnet group:
+  #------------------------------------------------------
+  DatabaseSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Subnet group for database instance
+      SubnetIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-2
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-3
+  #------------------------------------------------------
+  # aurora cluster parameter group
+  #------------------------------------------------------
+  RDSDBClusterParameterGroup:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: CloudFormation Sample Aurora Cluster Parameter Group
+      Family: aurora-mysql8.0
+      Parameters:
+        time_zone: US/Eastern
+  #------------------------------------------------------
+  # aurora parameter group
+  #------------------------------------------------------
+  RDSDBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: CloudFormation Sample Aurora Parameter Group
+      Family: aurora-mysql8.0
+      Parameters:
+        sql_mode: IGNORE_SPACE
+        max_allowed_packet: 1024
+  #------------------------------------------------------
+  # aurora cluster 
+  #------------------------------------------------------
+  RDSCluster:
+    Type: 'AWS::RDS::DBCluster'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F26
+            reason: disable encryption for demo purpose
+          - id: F27
+            reason: disable encryption for demo purpose
+          - id: F80
+            reason: disable delete protection for demo purpose 
+          - id: F22
+            reason: enable public access for demo purpose 
+    Properties:
+      BackupRetentionPeriod: 7
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      DeletionProtection: false
+      DBClusterParameterGroupName: !Ref RDSDBClusterParameterGroup
+      DBClusterIdentifier: !Ref DBClusterIdentifier
+      DatabaseName: !Ref DBName
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterUserPassword
+      Engine: !Ref Engine
+      EngineMode: "provisioned"
+      EngineVersion: !Ref EngineVersion
+      EnableCloudwatchLogsExports:
+        - error
+        - general
+        - slowquery
+        - audit
+      Port: 3306
+      VpcSecurityGroupIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-database-security-group
+      StorageEncrypted: false
+          
+  #------------------------------------------------------
+  # aurora instance 1 
+  #------------------------------------------------------
+  RDSDBInstance1:
+    Type: 'AWS::RDS::DBInstance'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F26
+            reason: disable encryption for demo purpose
+          - id: F27
+            reason: disable encryption for demo purpose
+          - id: F80
+            reason: disable delete protection for demo purpose 
+          - id: F22
+            reason: enable public access for demo purpose 
+    Properties:
+      DBParameterGroupName: !Ref RDSDBParameterGroup
+      DBInstanceClass: !Ref DBInstanceClass
+      DBClusterIdentifier: !Ref RDSCluster
+      DBInstanceIdentifier: !Sub ${DBClusterIdentifier}-instance-1
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      EnablePerformanceInsights: true
+      Engine: !Ref Engine
+      PubliclyAccessible: true
+      PerformanceInsightsRetentionPeriod: 7
+      StorageEncrypted: false
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt [MonitoringRole, Arn]
+      # EngineLifecycleSupport: "open-source-rds-extended-support"

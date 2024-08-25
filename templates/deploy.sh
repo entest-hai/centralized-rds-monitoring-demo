@@ -19,3 +19,9 @@ aws cloudformation create-stack \
  --template-body file://3-rds-cluster.yaml \
  --capabilities CAPABILITY_NAMED_IAM \
  --parameters '[{"ParameterKey":"DBUsername","ParameterValue":"admin"},{"ParameterKey":"DBPassword","ParameterValue":"Admin2024"}]'
+
+aws cloudformation create-stack \
+ --stack-name rds-cluster-stack \
+ --template-body file://4-aurora-cluster.yaml \
+ --capabilities CAPABILITY_NAMED_IAM \
+ --parameters '[{"ParameterKey":"MasterUsername","ParameterValue":"admin"},{"ParameterKey":"MasterUserPassword","ParameterValue":"Admin2024"}]'
