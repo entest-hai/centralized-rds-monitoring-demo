@@ -5,6 +5,10 @@ Parameters:
     Description: Stack name of the network stack
     Type: String
     Default: network-stack
+  DBName: 
+    Description: database name 
+    Type: string 
+    Default: demo
   DBUsername:
     NoEcho: 'true'
     Description: Username for database access
@@ -80,7 +84,18 @@ Resources:
       SubnetIds:
         - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-1
         - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-2
-        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-3   
+        - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-3
+  #------------------------------------------------------
+  # cluster parameter group
+  #------------------------------------------------------
+  RDSDBClusterParameterGroup:
+    Type: 'AWS::RDS::DBClusterParameterGroup'
+    Properties:
+      Description: Parameter group for RDS multi-az cluster 
+      Family: mysql8.0  
+      Parameters:
+        time_zone: US/Eastern
+        log_bin_trust_function_creators: 1
   #------------------------------------------------------
   # rds multi-az cluster:
   #------------------------------------------------------
@@ -104,6 +119,8 @@ Resources:
       DBClusterInstanceClass: !Ref DBInstanceClass
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
       DBClusterIdentifier: !Ref DBClusterIdentifier
+      DBClusterParameterGroupName: !Ref RDSDBClusterParameterGroup
+      DatabaseName: !Ref DBName
       DeletionProtection: false
       Engine: !Ref Engine
       EngineVersion: !Ref EngineVersion

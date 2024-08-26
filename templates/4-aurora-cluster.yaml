@@ -107,6 +107,7 @@ Resources:
       Family: aurora-mysql8.0
       Parameters:
         time_zone: US/Eastern
+        max_allowed_packet: 1073741824
   #------------------------------------------------------
   # aurora parameter group
   #------------------------------------------------------
@@ -117,7 +118,7 @@ Resources:
       Family: aurora-mysql8.0
       Parameters:
         sql_mode: IGNORE_SPACE
-        max_allowed_packet: 1024
+        max_allowed_packet: 1073741824
   #------------------------------------------------------
   # aurora cluster 
   #------------------------------------------------------
