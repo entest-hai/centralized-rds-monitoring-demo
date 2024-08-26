@@ -109,7 +109,7 @@ func getEmployees() []byte {
 	return bytes
 }
 
-func main() {
+func TestMySQLWebServer() {
 
 	mux := http.NewServeMux()
 

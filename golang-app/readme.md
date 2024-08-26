@@ -91,3 +91,20 @@ Insert some records.
 ```sql
 INSERT INTO book(author, title, amazon, image) VALUES ('Hai Tran', 'Deep Learning', '', 'hello.jpg');
 ```
+
+## Load Sample Data
+
+Clone [test_db git repository](https://github.com/datacharmer/test_db).
+
+Load sakila sample data.
+
+```bash
+sudo mysql -h <DB_HOST> -P 3306 -u admin -p demo < sakila-mv-schema.sql
+sudo mysql -h <DB_HOST> -P 3306 -u admin -p demo < sakila-mv-data.sql
+```
+
+Load employees data.
+
+```bash
+sudo mysql -h <DB_HOST> -P 3306 -u admin -p demo < employees.sql
+```
