@@ -7,7 +7,7 @@ Parameters:
     Default: network-stack
   DBName: 
     Description: database name 
-    Type: string 
+    Type: String 
     Default: demo
   DBUsername:
     NoEcho: 'true'
@@ -141,3 +141,22 @@ Resources:
       StorageEncrypted: false
       VpcSecurityGroupIds:
         - Fn::ImportValue: !Sub ${NetworkStackName}-database-security-group
+  #------------------------------------------------------
+  # exported output:
+  #------------------------------------------------------
+Outputs:
+  DatabaseArn:
+    Description: Database Cluster ARN
+    Value: !GetAtt MultiAZDBCluster.DBClusterArn
+    Export:
+      Name: !Sub ${AWS::StackName}-database-cluster-arn
+  DatabasePort:
+    Description: Database port
+    Value: !GetAtt MultiAZDBCluster.Endpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-database-port
+  DatabaseEndpointAddress:
+    Description: Database endpoint address
+    Value: !GetAtt MultiAZDBCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-database-cluster-endpoint-address

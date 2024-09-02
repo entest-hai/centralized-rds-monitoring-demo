@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: >-
-  Description": "AWS CloudFormation Sample Template for creating an Amazon RDS DB instance: 
-  Sample template showing how to create a DB instance with Enhanced Monitoring enabled. 
-  **WARNING** This template creates an RDS DB instance. You will be billed for the AWS 
-  resources used if you create a stack from this template.
+Description: 
+  Create a database parameter group 
+  Create a database subnet group 
+  Create a database instance MySQL
 Parameters:
   NetworkStackName:
     Description: Stack name of the network stack
@@ -76,6 +75,17 @@ Resources:
         - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-1
         - Fn::ImportValue: !Sub ${NetworkStackName}-public-subnet-2
   #------------------------------------------------------
+  # database instance parameter group
+  #------------------------------------------------------
+  RDSDBParameterGroup:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: database parameter group
+      Family: mysql8.0
+      Parameters:
+        sql_mode: IGNORE_SPACE
+        log_bin_trust_function_creators: 1
+  #------------------------------------------------------
   # iam role for rds push logs to cloudwatch:
   #------------------------------------------------------
   MonitoringRole:
@@ -111,6 +121,7 @@ Resources:
       DBInstanceIdentifier: !Ref DBInstanceID
       DBName: !Ref DBName
       DBInstanceClass: !Ref DBInstanceClass
+      DBParameterGroupName: !Ref RDSDBParameterGroup
       AllocatedStorage: !Ref DBAllocatedStorage
       Engine: MySQL
       EngineVersion: !Ref DBEngine
@@ -136,3 +147,22 @@ Resources:
       # EngineLifecycleSupport: "open-source-rds-extended-support"
       VPCSecurityGroups:
         - Fn::ImportValue: !Sub ${NetworkStackName}-database-security-group
+  #------------------------------------------------------
+  # exported output:
+  #------------------------------------------------------
+Outputs:
+  DatabaseArn:
+    Description: Database ARN
+    Value: !GetAtt RDSDatabaseInstance.DBInstanceArn
+    Export:
+      Name: !Sub ${AWS::StackName}-database-arn
+  DatabasePort:
+    Description: Database port
+    Value: !GetAtt RDSDatabaseInstance.Endpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-database-port
+  DatabaseEndpointAddress:
+    Description: Database endpoint address
+    Value: !GetAtt RDSDatabaseInstance.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-database-endpoint-address

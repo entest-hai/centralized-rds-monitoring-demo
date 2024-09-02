@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: schedule esc mysql app task using event-bridge
+#------------------------------------------------------
+# Parameters
+#------------------------------------------------------
+Parameters:
+  ClusterName:
+    Type: String
+    Description: "ecs cluster an"
+  TaskName: 
+    Type: String 
+    Description: "task arn"
+  Subnets:
+    Type: String 
+    Description: "subnets id"
+  SecurityGroups: 
+    Type: String 
+    Description: "security groups id"
+#------------------------------------------------------
+# Resources: event-bridge schedule 
+#------------------------------------------------------
+Resources:
+  EventBridgeExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${AWS::StackName}-invoke-task-policy"
+          PolicyDocument: !Sub
+          - |
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecs:RunTask"
+                        ],
+                        "Resource": [
+                            "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskName}:*",
+                            "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskName}"
+                        ],
+                        "Condition": {
+                            "ArnLike": {
+                                "ecs:cluster": "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": "iam:PassRole",
+                        "Resource": [
+                            "*"
+                        ],
+                        "Condition": {
+                            "StringLike": {
+                                "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                            }
+                        }
+                    }
+                ]
+            }
+          - ClusterName: !Ref ClusterName
+            TaskName: !Ref TaskName
+  ScheduleECSTaskMySQLApp:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Description: "schedule for mysql app task in amazon ecs"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: ENABLED
+      ScheduleExpression: rate(240 minutes) 
+      Target:
+        Arn:
+          Fn::Sub: 
+            - "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ClusterName}"
+            - ClusterName: !Ref ClusterName
+        RoleArn: !GetAtt EventBridgeExecutionRole.Arn
+        EcsParameters:
+          TaskDefinitionArn:
+            Fn::Sub:
+              - "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/${TaskName}"
+              - TaskName: !Ref TaskName
+          LaunchType: FARGATE
+          NetworkConfiguration:
+            AwsvpcConfiguration:
+              AssignPublicIp: ENABLED 
+              SecurityGroups:
+                - !Ref SecurityGroups 
+              Subnets:
+                - !Ref Subnets

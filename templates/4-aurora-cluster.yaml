@@ -187,3 +187,22 @@ Resources:
       MonitoringInterval: 60
       MonitoringRoleArn: !GetAtt [MonitoringRole, Arn]
       # EngineLifecycleSupport: "open-source-rds-extended-support"
+  #------------------------------------------------------
+  # exported output:
+  #------------------------------------------------------
+Outputs:
+  DatabaseArn:
+    Description: Database Cluster ARN
+    Value: !GetAtt RDSCluster.DBClusterArn
+    Export:
+      Name: !Sub ${AWS::StackName}-database-cluster-arn
+  DatabasePort:
+    Description: Database port
+    Value: !GetAtt RDSCluster.Endpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-database-port
+  DatabaseEndpointAddress:
+    Description: Database endpoint address
+    Value: !GetAtt RDSCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-database-cluster-endpoint-address
