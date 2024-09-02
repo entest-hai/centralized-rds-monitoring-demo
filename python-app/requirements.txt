@@ -1,5 +1,2 @@
-boto3
-names 
-Flask
-Flask-Table
+python-dotenv
 mysql-connector-python
