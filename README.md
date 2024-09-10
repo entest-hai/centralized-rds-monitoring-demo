@@ -6,11 +6,11 @@ date: 25/08/2024
 
 ## CloudWatch Cross Account Observability
 
-[oam-2](./assets/oam-2.png)
+![oam-2](./assets/oam-2.png)
 
 ## Extend Beyond AWS with Grafana
 
-[oam-3](./assets/oam-3.png)
+![oam-3](./assets/oam-3.png)
 
 ## RDS Performance Insights
 
