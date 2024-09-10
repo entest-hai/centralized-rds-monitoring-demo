@@ -4,6 +4,14 @@ author: haimtran
 date: 25/08/2024
 ---
 
+## CloudWatch Cross Account Observability
+
+[oam-2](./assets/oam-2.png)
+
+## Extend Beyond AWS with Grafana
+
+[oam-3](./assets/oam-3.png)
+
 ## RDS Performance Insights
 
 Load test RDS MySQL instance using Amazon ECS tasks.
